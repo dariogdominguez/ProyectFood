@@ -17,13 +17,14 @@ const apiInfo = async () =>{
     await axios(`${END_POINT}&apiKey=${API_KEY}`)
     .then(response => response.data)
     .then(data => apiMap = data.results.map(e => {
-        let {id, title, summary, healthScore, steps, image} = e
+        let {id, title, summary, healthScore, steps, image, diets} = e
         return {
             id,
             nombre : title,
             resumen : summary,
             nivel : healthScore,
             pasos : steps,
+            dietas : diets,
             image: image,
 }
 }))
@@ -54,10 +55,10 @@ router.get('/recipes', async (req, res) => {
     const recetas = await todasLasrecetas();
     try {
         if(req.query.name){
-            let filtradas = await recetas.filter( e => e.name.toLowerCase().includes (req.query.name.toLowerCase()));
+            let filtradas = await recetas.filter( e => e.nombre.toLowerCase().includes (req.query.name.toLowerCase()));
             filtradas.length ?
             res.status(200).send(filtradas) :
-            res.status(400).send('no existe la raza');
+            res.status(400).send('no existe la receta');
         }else{
             res.status(200).send(recetas);}
     } catch (error) {
@@ -75,6 +76,21 @@ router.get('/recipes/:id', async (req, res) =>{
     }
 });
 
+router.get('/recipes/type/:id', async (req, res) => {
+    let recetas = await getAllBreeds();
+    let tipoDeReceta = req.params.id;
+    if(req.params.id){
+        let filtrados = await recetas.filter(e => {
+            if(e.temperament !== undefined){
+                if(e.temperament.indexOf(tipoDeReceta)>0)
+            return e.temperament}
+        });
+        filtrados?
+        res.status(200).send(filtrados) :
+        res.status(400).send('no se encontraron recetas');
+    }
+});
+
 router.get('/types', async (req, res) => {
     let dietas = [];
     await axios(`${END_POINT}&apiKey=${API_KEY}`)
@@ -85,7 +101,6 @@ router.get('/types', async (req, res) => {
     }))
     const dataArr = new Set(dietas);
     let result = [...dataArr];
-
     result.forEach(e => {
         Diet.findOrCreate({
             where: { nombre: e}
@@ -99,12 +114,13 @@ router.post('/recipe', async (req, res) =>{
     let {id, title, summary, spoonacularScore, healthScore, steps, diets} = req.body
 
     let recetaCreada = await Recipe.create({
-        id,
+        id: Math.floor((Math.random() * (999 - 1 + 1)) + 1),
         nombre : title,
         resumen : summary,
         nivel : healthScore,
         puntuacion: spoonacularScore,
         pasos : steps,
+        dietas :diets,
         image : "https://png.pngtree.com/element_our/png_detail/20181102/hearty-cartoon-korean-food-png_220551.jpg",
         createdInDb: true
     });
@@ -114,6 +130,7 @@ router.post('/recipe', async (req, res) =>{
     });
     recetaCreada.addDiet(dietasDeBd);
     res.send('Receta Creada con exito')
+    console.log(recetaCreada, dietasDeBd)
 });
 
 module.exports = router;
